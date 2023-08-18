@@ -1,326 +1,133 @@
 
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+import {app,auth,signOut,getDocs,collection ,db, addDoc,deleteDoc,updateDoc,doc} from "./firebase.js"
+var getUsers = JSON.parse(localStorage.getItem("user"))
 
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+if(!getUsers){
+  window.location.replace('./login.html')
+ 
 
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyBeyYxu0xhEIPAQVfMjXjrdEENHB4bfmtY",
-    authDomain: "todo-app-a40c2.firebaseapp.com",
-    projectId: "todo-app-a40c2",
-    storageBucket: "todo-app-a40c2.appspot.com",
-    messagingSenderId: "890383502147",
-    appId: "1:890383502147:web:d605088a04cdc6ca5b3df6"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-
-  //initialize firestor
-  const db = getFirestore(app)
-
-
-var input = document.getElementById("input")
-var ulParent = document.getElementById("ulparent")
-//get add task button
-var addBtn = document.getElementById('add-todo')
-//get del task button
-var delBtn = document.getElementById('del-todo')
-addBtn.addEventListener('click',addTodo)
-async function addTodo(){
-    try{    if(!input.value){
-        return
-    }
-    var ulEle = document.createElement("ul")
-    var liEle = document.createElement("li")
-    var litxt = document.createTextNode(input.value)
-    var liDiv = document.createElement("div")
-    var btnEdit = document.createElement("button")
-    btnEdit.innerHTML = "Edit"
-    btnEdit.setAttribute("onclick" , "editTodo(this)")
-    var deleteBtn = document.createElement("button")
-    deleteBtn.innerHTML = "Delte"
+}else{
+  console.log(getUsers)  
+  let logoutBtn = document.getElementById('logout')
+  let para = document.getElementById('para')
+  // let showTask = document.querySelector('.showTask')
+  let Add = document.getElementById('add')
+  // let edit = document.getElementById('edit')
+  // let deleteBtn = document.getElementById('delete')
+  let parent = document.querySelector('.parent')
+  
+  console.log(getUsers)
+  logoutBtn.addEventListener('click',Logout)
+  function Logout(){
+      signOut(auth).then(() => {
+          // Sign-out successful.
+          alert('logout')
+          window.location.replace('./login.html')
+        }).catch((error) => {
+          // An error happened.
+        });
+        localStorage.removeItem('user')
+  }
+  
+  Add.addEventListener('click',addTask)
+  async function addTask(){
+    try {
+      let inp = document.getElementById('inp')
+      const taskObj = {
+        todo:inp.value,
     
-    deleteBtn.setAttribute("onclick", "deleteTodo(this)")
-
-    btnEdit.className = "btn btn-primary m-2"
-    deleteBtn.className = "btn btn-danger m-2"
-
-    liEle.appendChild(litxt)
-    liDiv.appendChild(btnEdit)
-    liDiv.appendChild(deleteBtn)
-    liEle.appendChild(liDiv)
-    ulEle.appendChild(liEle)
-    ulParent.appendChild(ulEle)
-
-
-    liEle.className = "bg-dark mt-3 p-2 text-white d-flex justify-content-between"
-    var task = input.value
-    //working on db
-    //creating a task obj
-    const taskObj = {
-        task,
+      }
+      const taskRef = await addDoc(collection(db,'tasks'),taskObj)
+      console.log(taskObj)
+      console.log("Document written with ID: ", taskRef.id);
+      createUi(inp.value, taskRef.id)
+    } catch (error) {
+      console.log(error.message)
     }
-    const decRef = await addDoc(collection(db,'task'),taskObj)}
-    catch(err){
-        console.log(err.message,'error')
-    }
-
-
-    input.value=""
-}
-
-// creating a onload function when user load data get from db and show in ui
-window.addEventListener('load',getTask)
-async function getTask(){
-    try{
-        const getData = await getDocs(collection(db,'task'))
-        getData.forEach(function(doc){
-            var myData = doc.data()
-            //working on ui
-            var taskPost = `         <ul>
-            <li class="bg-dark mt-3 p-2 text-white d-flex justify-content-between">${myData.task}
-                <div class="lidiv">
-                    <button class=" btn btn-primary m-2">Edit</button>
-                    <button class=" btn btn-danger m-2">Delete</button>
-                </div>
-            </li>
-         </ul>`
-            ulParent.innerHTML += taskPost
+  }
+  
+  
+  
+  
+  
+  
+  window.addEventListener('load',showTask)
+  async function showTask(){
+    const querySnapshot = await getDocs(collection(db, "tasks"));
+    querySnapshot.forEach((doc) => {
+      console.log(doc.id, " => ", doc.data());
+      const todoValue = doc.data().todo
+      createUi(todoValue,doc.id)
+      
+      // deleteBtn.addEventListener('click',deleteTask)
+  
+  });
+  }
+  
+  
+  async function editTodo(el) {
+    // console.log("editTodo()", el.target.parentNode.parentNode.
+    //     firstChild.nodeValue)
+    try {
+  
+        var li = el.target.parentNode.parentNode
+        var placeHolder = li.firstChild.nodeValue
+        var editValue = prompt("Edit Todo", placeHolder)
+        console.log(li.id, "id")
+        const updateData = await updateDoc(doc(db, "tasks", li.id), {
+            todo: editValue
         })
+  
+        console.log("editValue", editValue)
+        li.firstChild.nodeValue = editValue
+  
+    } catch (error) {
+        console.log("error", error.message)
+        alert(error.message)
     }
-    catch(error){
-        console.log(error.meaasge)
+  
+  
+  }
+  
+  async function deleteTodo(elem) {
+    try {
+      var li = elem.target.parentNode.parentNode
+      console.log(li.id)
+      await deleteDoc(doc(db, "tasks", li.id));
+      elem.target.parentNode.parentNode.remove()
+    
+    } catch (error) {
+        console.log(error.message)
     }
-
-}
-
-
-//creating edittodo function
-function editTodo(el){
-    var li=el.parentNode.parentNode
-    var val = li.firstChild.nodeValue
-    var prom = prompt("Edit ", val)
-    li.firstChild.nodeValue = prom
-     
-
-}
-function deleteTodo(elem) {
-
-    elem.parentNode.parentNode.remove()
-}
-function delAll(){
-    ulParent.innerHTML=""
-};
-
-//continue but bugs
-
-//   // Import the functions you need from the SDKs you need
-//   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-//   import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
-
-//   // TODO: Add SDKs for Firebase products that you want to use
-//   // https://firebase.google.com/docs/web/setup#available-libraries
-
-//   // Your web app's Firebase configuration
-//   const firebaseConfig = {
-//     apiKey: "AIzaSyBeyYxu0xhEIPAQVfMjXjrdEENHB4bfmtY",
-//     authDomain: "todo-app-a40c2.firebaseapp.com",
-//     projectId: "todo-app-a40c2",
-//     storageBucket: "todo-app-a40c2.appspot.com",
-//     messagingSenderId: "890383502147",
-//     appId: "1:890383502147:web:d605088a04cdc6ca5b3df6"
-//   };
-
-//   // Initialize Firebase
-//   const app = initializeApp(firebaseConfig);
-
-//   //initialize firestor
-//   const db = getFirestore(app)
-
-
-// var input = document.getElementById("input")
-// var ulParent = document.getElementById("ulparent")
-// const addBtn = document.getElementById('add-todo')
-
-// addBtn.addEventListener('click',addTodo)
-
-
-// // creating a onload function when user load data get from db and show in ui
-// // window.addEventListener('load',getTask)
-// // async function getTask(){
-// //     try{
-// //         const getData = await getDocs(collection(db,'task'))
-// //         getData.forEach(function(doc){
-// //             // var myData = doc.data().task
-// //             //working on ui
-// //             createUi(doc.data().task,doc.id)
-// //         })
-// //     }
-// //     catch(error){
-// //         console.log(error.message)
-// //     }
-
-// // }
-
-// //test
-// window.addEventListener('load',getTask)
-// async function getTask() {
-//     try {
-//         const arr = []
-//         const querySnapshot = await getDocs(((collection,db),'task'))
-//         querySnapshot.forEach(function (doc) {
-//             console.log(doc.id, doc.data())
-//             const todoValue = doc.data().task
-//             createUi(todoValue, doc.id)
-//             // arr.push({
-//             //     id: doc.id,
-//             //     todo: doc.data()
-//             // })
-//         });
-//         // console.log("array", arr)
-
-
-//     } catch (error) {
-//         console.log(error.message, "error")
-//         alert(error.message)
-//     }
-// }
-
-// // async function addTodo(){
-// //     try{    if(!input.value){
-// //         return
-// //     }
-// //     // var ulEle = document.createElement("ul")
-// //     // var liEle = document.createElement("li")
-// //     // var litxt = document.createTextNode(input.value)
-// //     // var liDiv = document.createElement("div")
-// //     // var btnEdit = document.createElement("button")
-// //     // btnEdit.innerHTML = "Edit"
-// //     // btnEdit.setAttribute("click" , "editTodo()")
-// //     // var deleteBtn = document.createElement("button")
-// //     // deleteBtn.innerHTML = "Delte"
+  }
+  
+  
+  
+  function createUi(todoValue,id){
     
-// //     // deleteBtn.setAttribute("id" , "delBtn")
+    var liElement = document.createElement("li")
+    liElement.id = id
+    liElement.innerHTML = todoValue
+    liElement.className = "list-group-item d-flex align-items-center justify-content-between"
+  
+    var div = document.createElement("div")
+    var editBtn = document.createElement("button")
+    var deleteBtn = document.createElement("button")
+    editBtn.innerHTML = "EDIT"
+    editBtn.addEventListener("click", editTodo)
+  
+  
+    deleteBtn.innerHTML = "DELETE"
+    deleteBtn.addEventListener("click", deleteTodo)
+  
+    editBtn.className = "btn btn-info"
+    deleteBtn.className = "btn btn-danger"
+  
+    div.appendChild(editBtn)
+    div.appendChild(deleteBtn)
+  
+    liElement.appendChild(div)
+    parent.appendChild(liElement)
+  }
+}
 
-// //     // btnEdit.className = "btn btn-primary m-2"
-// //     // deleteBtn.className = "btn btn-danger m-2"
-
-// //     // liEle.appendChild(litxt)
-// //     // liDiv.appendChild(btnEdit)
-// //     // liDiv.appendChild(deleteBtn)
-// //     // liEle.appendChild(liDiv)
-// //     // ulEle.appendChild(liEle)
-// //     // ulParent.appendChild(ulEle)
-
-
-// //     // liEle.className = "bg-dark mt-3 p-2 text-white d-flex justify-content-between"
-
-// //     // var task = input.value
-// //     //working on db
-// //     //creating a task obj
-
-// //     const taskObj = {
-// //         task: input.value,
-// //     }
-// //     const docRef = await addDoc(collection(db,'task'),taskObj)
-
-// //     //call create ui function 
-// //     createUi(input.value,docRef.id)
-// //     input.value=""
-
-// //     }
-// //     catch(err){
-// //         console.log(err.message,'error')
-// //     }
-// // }
-
-// //test
-// async function addTodo() {
-//     try {
-//         if (!input.value) {
-//             alert("ENTER TODO VALUEs")
-//             return
-//         }
-//         const data = {
-//             task: input.value
-//         }
-//         const docRef = await addDoc((db,'task'), data)
-//         console.log("Document written with ID: ", docRef.id);
-//         createUi(input.value, docRef.id)
-//         input.value = ""
-//     } catch (error) {
-//         console.log("error", error.message)
-//         alert(error.message)
-//     }
-// }
-
-// //creating edittodo function
-// async function editTodo(el){
-//     try{
-//         var li=el.target.parentNode.parentNode
-//         var val = li.firstChild.nodeValue
-//         console.log(li)
-//         var prom = prompt("Edit ", val)
-//         li.firstChild.nodeValue = prom
-     
-//     }
-//     catch(error){
-//         console.log(error.meaasge)
-//     }
-
-// }
-// function deleteTodo(elem) {
-
-//     elem.parentNode.parentNode.remove()
-// }
-
-
-// //create ui function
-// // function createUi(addTodoVal,id){
-// //     var taskPost = `         <ul>
-// //     <li id = ${id} class="bg-dark mt-3 p-2 text-white d-flex justify-content-between">${addTodoVal}
-// //         <div class="lidiv">
-// //             <button class=" btn btn-primary m-2 id="editBtn">Edit</button>
-// //             <button class=" btn btn-danger m-2" id="delBtn">Delete</button>
-// //         </div>
-// //     </li>
-// //  </ul>`
-// //     ulParent.innerHTML += taskPost
-
-// //     //get edit task button
-// //     var editBtn = document.getElementById('editBtn')
-// //     //get del task button
-// //     var delBtn = document.getElementById('delBtn')
-// //     editBtn.addEventListener('click',editTodo)
-// //     delBtn.addEventListener('click',deleteTodo)
-
-    
-// // }
-
-// //test
-// function createUi(addTodoVal, id) {
-
-//     const todoUI = `         <ul>
-//     //     <li id = ${id} class="bg-dark mt-3 p-2 text-white d-flex justify-content-between">${addTodoVal}
-//     //         <div class="lidiv">
-//     //             <button class=" btn btn-primary m-2 id="editBtn">Edit</button>
-//     //             <button class=" btn btn-danger m-2" id="delBtn">Delete</button>
-//     //         </div>
-//     //     </li>
-//     //  </ul>`
-//     ulParent.innerHTML += todoUI
-
-//     const editBtn = document.querySelector("#editBtn")
-//     const deleteBtn = document.querySelector("#deleteBtn")
-
-//     editBtn.addEventListener("click", editTodo)
-//     deleteBtn.addEventListener("click", deleteTodo)
-
-// }
-// function delAll(){
-//     ulParent.innerHTML=""
-// };
